@@ -12,21 +12,16 @@ import { tool, type StructuredToolInterface } from '@langchain/core/tools'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { z } from 'zod'
 import {
+  Camera,
   ChevronDown,
   Circle,
-  Compass,
-  Image,
+  FolderOpen,
   LoaderCircle,
-  Menu,
-  MessageCircle,
   Mic,
-  PenLine,
-  Pin,
   Plus,
-  Search,
   SendHorizontal,
   Sparkles,
-  SquarePen,
+  SquareTerminal,
   Volume2,
 } from 'lucide-react'
 
@@ -37,19 +32,14 @@ type ChatMessage = {
   toolsUsed?: string[]
 }
 
-const modelName = 'gemini-2.5-flash'
+const modelName = 'gemma-4-26b-a4b-it'
 
-const primaryItems = [
-  { label: 'New chat', icon: SquarePen },
-  { label: 'Search chats', icon: Search },
-  { label: 'Pinned', icon: Pin },
-  { label: 'Chats', icon: MessageCircle },
-]
+
 
 const actionChips = [
-  { label: 'Create an image', icon: Image },
-  { label: 'Write or edit', icon: PenLine },
-  { label: 'Look something up', icon: Compass },
+  { label: 'Explore current directory', icon: FolderOpen },
+  { label: 'Run a terminal command', icon: SquareTerminal },
+  { label: 'Take a window screenshot', icon: Camera },
 ]
 
 const agentTools = [
@@ -228,9 +218,159 @@ const agentTools = [
   ),
 ]
 
-const toolByName = new Map<string, StructuredToolInterface>(
-  agentTools.map((agentTool) => [agentTool.name, agentTool]),
-)
+const desktopTools = [
+  tool(
+    async ({ path }) => invokeDesktopTool('file_list_directory', { path }),
+    {
+      name: 'file_list_directory',
+      description:
+        'List files and folders on the desktop machine. Use this to inspect directories before reading or writing files.',
+      schema: z.object({
+        path: z.string().default('.').describe('Directory path to list. Relative paths resolve from the app workspace.'),
+      }),
+    },
+  ),
+  tool(
+    async ({ path }) => invokeDesktopTool('file_read', { path }),
+    {
+      name: 'file_read',
+      description:
+        'Read a text file from the desktop machine. Use this before editing files so you can understand existing contents.',
+      schema: z.object({
+        path: z.string().describe('File path to read. Relative paths resolve from the app workspace.'),
+      }),
+    },
+  ),
+  tool(
+    async ({ path, content, append }) => invokeDesktopTool('file_write', { path, content, append }),
+    {
+      name: 'file_write',
+      description:
+        'Write or append text to a file on the desktop machine. This always asks the user for permission before writing.',
+      schema: z.object({
+        path: z.string().describe('File path to write. Relative paths resolve from the app workspace.'),
+        content: z.string().describe('Text content to write or append.'),
+        append: z.boolean().optional().describe('Append instead of replacing the file.'),
+      }),
+    },
+  ),
+  tool(
+    async ({ path, recursive, force }) => invokeDesktopTool('file_delete', { path, recursive, force }),
+    {
+      name: 'file_delete',
+      description:
+        'Delete a file or folder on the desktop machine. This always asks the user for permission before deleting.',
+      schema: z.object({
+        path: z.string().describe('File or folder path to delete.'),
+        recursive: z.boolean().optional().describe('Allow deleting a folder recursively.'),
+        force: z.boolean().optional().describe('Ignore missing paths and some filesystem errors.'),
+      }),
+    },
+  ),
+  tool(
+    async ({ command, cwd, timeoutMs }) => invokeDesktopTool('shell_execute', { command, cwd, timeoutMs }),
+    {
+      name: 'shell_execute',
+      description:
+        'Run a terminal or shell command on the desktop machine. This always asks the user for permission before execution.',
+      schema: z.object({
+        command: z.string().describe('Shell command to run.'),
+        cwd: z.string().optional().describe('Working directory. Relative paths resolve from the app workspace.'),
+        timeoutMs: z.number().optional().describe('Command timeout in milliseconds. Defaults to 30000.'),
+      }),
+    },
+  ),
+  tool(
+    async () => invokeDesktopTool('desktop_screenshot', {}),
+    {
+      name: 'desktop_screenshot',
+      description:
+        'Capture a PNG screenshot of the AskAgent desktop window. Use this for visual inspection of the current app state.',
+      schema: z.object({}),
+    },
+  ),
+  tool(
+    async ({ x, y }) => invokeDesktopTool('desktop_mouse_click', { x, y }),
+    {
+      name: 'desktop_mouse_click',
+      description:
+        'Click inside the AskAgent window at x/y coordinates. This asks permission before controlling input.',
+      schema: z.object({
+        x: z.number().describe('X coordinate inside the app window.'),
+        y: z.number().describe('Y coordinate inside the app window.'),
+      }),
+    },
+  ),
+  tool(
+    async ({ text }) => invokeDesktopTool('desktop_keyboard_type', { text }),
+    {
+      name: 'desktop_keyboard_type',
+      description:
+        'Type text into the focused control inside the AskAgent window. This asks permission before controlling input.',
+      schema: z.object({
+        text: z.string().describe('Text to type.'),
+      }),
+    },
+  ),
+  tool(
+    async ({ target }) => invokeDesktopTool('app_open', { target }),
+    {
+      name: 'app_open',
+      description:
+        'Open an app, file path, folder path, or URL using the operating system. This asks permission before launching.',
+      schema: z.object({
+        target: z.string().describe('Application path, file/folder path, or URL to open.'),
+      }),
+    },
+  ),
+  tool(
+    async ({ action, url }) => invokeDesktopTool('playwright_browser', { action, url }),
+    {
+      name: 'playwright_browser',
+      description:
+        'Placeholder for a Playwright browser toolkit. Currently reports setup requirements until Playwright browser automation is fully wired.',
+      schema: z.object({
+        action: z.string().describe('Requested browser action, such as open, click, type, screenshot, or inspect.'),
+        url: z.string().optional().describe('URL for browser actions that need a page.'),
+      }),
+    },
+  ),
+  tool(
+    async ({ task }) => invokeDesktopTool('e2b_sandbox', { task }),
+    {
+      name: 'e2b_sandbox',
+      description:
+        'Placeholder for E2B remote sandbox execution. Currently reports setup requirements until E2B SDK/API key wiring is added.',
+      schema: z.object({
+        task: z.string().describe('Sandbox task to run.'),
+      }),
+    },
+  ),
+  tool(
+    async ({ title, message, detail }) => invokeDesktopTool('permission_request', { title, message, detail }),
+    {
+      name: 'permission_request',
+      description:
+        'Ask the user for explicit permission before a sensitive action. File writes, deletes, shell execution, app launching, mouse, and keyboard tools already do this automatically.',
+      schema: z.object({
+        title: z.string().optional().describe('Permission dialog title.'),
+        message: z.string().optional().describe('Permission dialog message.'),
+        detail: z.string().optional().describe('Extra detail shown to the user.'),
+      }),
+    },
+  ),
+]
+
+function invokeDesktopTool(name: string, input: Record<string, unknown>) {
+  if (!window.askAgentDesktop) {
+    return JSON.stringify({
+      ok: false,
+      error: 'Desktop tools are only available inside the Electron app.',
+    })
+  }
+
+  return window.askAgentDesktop.invokeTool(name, input).then((result) => JSON.stringify(result))
+}
 
 function createId() {
   return crypto.randomUUID()
@@ -263,8 +403,8 @@ function readMessageContent(content: MessageContent) {
     .trim()
 }
 
-async function runToolCall(toolCall: ToolCall) {
-  const selectedTool = toolByName.get(toolCall.name)
+async function runToolCall(toolCall: ToolCall, availableToolByName: Map<string, StructuredToolInterface>) {
+  const selectedTool = availableToolByName.get(toolCall.name)
 
   if (!selectedTool) {
     return new ToolMessage({
@@ -307,6 +447,14 @@ function App() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
+  const availableTools = useMemo(
+    () => (window.askAgentDesktop ? [...agentTools, ...desktopTools] : agentTools),
+    [],
+  )
+  const availableToolByName = useMemo(
+    () => new Map<string, StructuredToolInterface>(availableTools.map((agentTool) => [agentTool.name, agentTool])),
+    [availableTools],
+  )
   const agent = useMemo(() => {
     if (!apiKey) {
       return null
@@ -315,8 +463,8 @@ function App() {
     return new ChatGoogle({
       apiKey,
       model: modelName,
-    }).bindTools(agentTools)
-  }, [apiKey])
+    }).bindTools(availableTools)
+  }, [apiKey, availableTools])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -356,7 +504,7 @@ function App() {
     try {
       const agentMessages: BaseMessage[] = [
         new SystemMessage(
-          'You are a helpful, concise AI agent. Use tools when they improve accuracy, especially for math, current date/time, web search, and Wikipedia background. After tools return, answer naturally and cite URLs from tool results when available.',
+          'You are a helpful, concise AI agent. Use tools when they improve accuracy, especially for math, current date/time, web search, Wikipedia background, and desktop tasks. For desktop tasks, inspect before modifying. Sensitive desktop tools ask the user for permission before writing, deleting, executing shell commands, launching apps, or controlling input. If permission is denied, stop that action and explain what was not done. After tools return, answer naturally and cite URLs from tool results when available.',
         ),
         ...toLangChainMessages(nextMessages),
       ]
@@ -375,7 +523,9 @@ function App() {
         }
 
         toolCalls.forEach((toolCall) => toolsUsed.add(toolCall.name))
-        const toolMessages = await Promise.all(toolCalls.map(runToolCall))
+        const toolMessages = await Promise.all(
+          toolCalls.map((toolCall) => runToolCall(toolCall, availableToolByName)),
+        )
         agentMessages.push(...toolMessages)
       }
 
@@ -404,12 +554,6 @@ function App() {
     }
   }
 
-  function startNewChat() {
-    setMessages([])
-    setPrompt('')
-    setError('')
-  }
-
   function renderGenerationLoader() {
     return (
       <span className="generating" aria-label="Generating response">
@@ -420,42 +564,10 @@ function App() {
 
   return (
     <div className="chat-app">
-      <aside className="sidebar" aria-label="Chat navigation">
-        <div className="sidebar-top">
-          <button className="brand-button" aria-label="Open AskAgent home">
-            <img src="/askagent-logo.svg" alt="" />
-          </button>
-        </div>
-
-        <nav className="sidebar-nav" aria-label="Main navigation">
-          {primaryItems.map((item) => {
-            const Icon = item.icon
-            return (
-              <button
-                className="nav-item"
-                key={item.label}
-                type="button"
-                aria-label={item.label}
-                title={item.label}
-                onClick={item.label === 'New chat' ? startNewChat : undefined}
-              >
-                <Icon size={21} />
-              </button>
-            )
-          })}
-        </nav>
-
-        <div className="account">
-          <div className="avatar">MP</div>
-        </div>
-      </aside>
-
       <main className="main-panel">
         <header className="topbar">
-          <button className="mobile-menu" type="button" aria-label="Open menu">
-            <Menu size={22} />
-          </button>
           <button className="model-button" type="button">
+            <img src="./askagent-logo.svg" alt="AskAgent logo" className="topbar-logo" />
             <span>AskAgent</span>
             <ChevronDown size={18} />
           </button>

@@ -42,72 +42,14 @@ button:disabled {
   height: 100vh;
   overflow: hidden;
   background: #000000;
-  grid-template-columns: 69px 1fr;
+  grid-template-columns: 1fr;
 }
 
-.sidebar {
-  display: flex;
-  height: 100vh;
-  flex-direction: column;
-  align-items: center;
-  border-right: 1px solid #1b1b1b;
-  background: #000000;
-  padding: 14px 0 20px;
-}
-
-.sidebar-top {
-  display: grid;
-  place-items: center;
-  margin-bottom: 31px;
-}
-
-.brand-button,
-.icon-button,
-.mobile-menu,
-.nav-item {
-  display: inline-grid;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  border-radius: 10px;
-  background: transparent;
-}
-
-.brand-button:hover,
-.icon-button:hover,
-.mobile-menu:hover,
-.nav-item:hover {
-  background: #1f1f1f;
-}
-
-.brand-button img {
-  width: 30px;
-  height: 30px;
+.topbar-logo {
+  width: 28px;
+  height: 28px;
   display: block;
-}
-
-.sidebar-nav {
-  display: grid;
-  gap: 3px;
-}
-
-.nav-item {
-  color: #ffffff;
-}
-
-.account {
-  margin-top: auto;
-}
-
-.avatar {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border-radius: 50%;
-  background: #9b59cf;
-  color: #ffffff;
-  font-size: 12px;
+  border-radius: 6px;
 }
 
 .main-panel {
@@ -146,6 +88,19 @@ button:disabled {
   cursor: default;
 }
 
+.icon-button {
+  display: inline-grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 10px;
+  background: transparent;
+}
+
+.icon-button:hover {
+  background: #1f1f1f;
+}
+
 .top-actions {
   display: inline-flex;
   align-items: center;
@@ -159,6 +114,7 @@ button:disabled {
 .mobile-menu {
   display: none;
 }
+
 
 .conversation {
   display: grid;
@@ -329,7 +285,7 @@ code {
   position: fixed;
   right: 32px;
   bottom: 28px;
-  left: 101px;
+  left: 32px;
   display: grid;
   justify-items: center;
   pointer-events: none;
@@ -447,25 +403,11 @@ code {
 }
 
 @media (max-width: 900px) {
-  .chat-app {
-    grid-template-columns: 1fr;
-  }
-
-  .sidebar {
-    display: none;
-  }
-
   .topbar {
     padding: 0 18px;
   }
 
-  .mobile-menu {
-    display: inline-grid;
-  }
-
   .model-button {
-    position: absolute;
-    left: 58px;
     font-size: 20px;
   }
 
