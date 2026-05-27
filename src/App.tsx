@@ -32,7 +32,7 @@ type ChatMessage = {
   toolsUsed?: string[]
 }
 
-const modelName = 'gemma-4-26b-a4b-it'
+const modelName = 'gemini-2.5-flash'
 
 
 
